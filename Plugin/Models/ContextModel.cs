@@ -8,7 +8,7 @@ using VMS.TPS.Common.Model.API;
 using VMS.TPS.Common.Model.Types;
 using System.Windows;
 using System.Numerics;
-
+using System.Windows.Interop;
 
 namespace Plugin.Models
 {
@@ -60,13 +60,13 @@ namespace Plugin.Models
                 newPlan.SetCalculationModel(CalculationType.PhotonOptimization, "PO_16.1"); // Tbox
             }
 
-                newPlan.SetCalculationOption("PO_1610", "General/OptimizerSettings/DoseCalculationResolution", "High");
+            newPlan.SetCalculationOption("PO_1610", "General/OptimizerSettings/DoseCalculationResolution", "High");
             newPlan.SetCalculationOption("PO_1610", "General/OptimizerSettings/DoseCalculationResolutionForSRSAndHyperarc", "High");
             newPlan.SetCalculationOption("PO_1610", "General/OptimizerSettings/UseGPU", "Yes");
             newPlan.SetCalculationOption("PO_1610", "VMAT/ApertureShapeController", "Moderate");
         }
 
-        public VVector GetIsocenter(IsoPlacement isoPlacement)
+        public VVector CalcOptimalIso(IsoPlacement isoPlacement)
         {
             if (isoPlacement == IsoPlacement.BoundingSphere)
             {
@@ -104,7 +104,10 @@ namespace Plugin.Models
 
         public void AddBeams(IsoPlacement isoPlacement, List<SimpleBeam> beams)
         {
-            VVector isocenter = GetIsocenter(isoPlacement);// new VVector(x, y, z);
+            VVector isocenter = CalcOptimalIso(isoPlacement);// new VVector(x, y, z);
+
+            // Do something with isocenter & PTVs!!!!!!!!!!!!!!!
+            WarnPhysics(isocenter);
 
             List<Beam> oldBeams = newPlan.Beams.ToList();
 
@@ -249,6 +252,75 @@ namespace Plugin.Models
 
             Vector3 centreOfMass = sum / pts.Count;
             return new VVector(centreOfMass.X, centreOfMass.Y, centreOfMass.Z);
+        }
+
+        class TargetPositionData
+        {
+            public VVector cx;
+            public double Xmin; public double Xmax;
+            public double Ymin; public double Ymax;
+            public double Zmin; public double Zmax;
+        }
+
+        /// <summary>
+        /// Check if there exists a PTV which cannot be QA'd with MapCheck.
+        /// If so, tell the RT to ask Physics advice
+        /// </summary>
+        public void WarnPhysics(VVector isocenter)
+        {
+            if (SelectedTargets.Count <= 1)
+                return;
+
+            List<TargetPositionData> targetsData = new List<TargetPositionData>();
+            foreach(var t in SelectedTargets)
+            {
+                var mesh = t.MeshGeometry.Positions;
+                double Xmin = double.PositiveInfinity, Xmax = double.NegativeInfinity;
+                double Ymin = double.PositiveInfinity, Ymax = double.NegativeInfinity;
+                double Zmin = double.PositiveInfinity, Zmax = double.NegativeInfinity;
+                foreach (var p in mesh)
+                {
+                    if (p.X < Xmin) { Xmin = p.X; }
+                    if (p.X > Xmax) { Xmax = p.X; }
+                    if (p.Y < Ymin) { Ymin = p.Y; }
+                    if (p.Y > Ymax) { Ymax = p.Y; }
+                    if (p.Z < Zmin) { Zmin = p.Z; }
+                    if (p.Z > Zmax) { Zmax = p.Z; }
+                }
+                var tpd = new TargetPositionData {
+                    cx = t.CenterPoint,
+                    Xmin = Xmin,
+                    Xmax = Xmax,
+                    Ymin = Ymin,
+                    Ymax = Ymax,
+                    Zmin = Zmin,
+                    Zmax = Zmax
+                };
+                targetsData.Add(tpd);
+            }
+
+            // Iterate over all pairs of targets
+            for (int i = 0; i < SelectedTargets.Count; i++)
+            {
+                for (int j = i + 1; j < SelectedTargets.Count; j++)
+                {
+                    if(
+                        (targetsData[i].Zmax - targetsData[j].Zmin > 100) &&
+                        (targetsData[i].cx.y - targetsData[j].Ymax < 23 && targetsData[i].cx.y - targetsData[j].Ymin > -23) &&
+                        (targetsData[i].cx.x - targetsData[j].Xmax < 51 && targetsData[i].cx.x - targetsData[j].Xmin > -51)
+                    )
+                    {
+                        // Distance from top of detector plane to electornics is 116mm
+                        // Add 1.6 cm here for the 50% isodose. Therefore 100mm tol. 
+
+                        // Uh oh!
+                        var debugMsg = String.Format("{0} may not be able to fit on MapCheck due to position of {1}", SelectedTargets[i].Id, SelectedTargets[j].Id);
+                        MessageBox.Show(debugMsg, "Possible QA Issue", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    // targetsData[j].Xmin
+                }
+            }
+
         }
     }
 }
