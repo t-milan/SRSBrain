@@ -33,19 +33,6 @@ namespace Plugin
                 _selectableTargets.Add(new StructureRow() { structure = s, isChecked = false });
             }
 
-            // Populate the list of field arrangements and associated images
-            Arrangements = new ObservableCollection<FieldArrangement>
-            {
-                new FieldArrangement { DisplayName = "Existing Geometry", ImagePath = GetPath("Existing.png")},
-                new FieldArrangement { DisplayName = "A: 2×Half, 1×[45,90,315]", ImagePath = GetPath("Head_A.png") },
-                new FieldArrangement { DisplayName = "B: 2×Full, 1×[45,90,315]", ImagePath = GetPath("Head_B.png")},
-                new FieldArrangement { DisplayName = "C: 2×Full, 1×[60,300]", ImagePath = GetPath("Head_C.png") },
-                new FieldArrangement { DisplayName = "D: 2×Full, 2×[60,300]", ImagePath = GetPath("Head_D.png") },
-                new FieldArrangement { DisplayName = "E: 2×Half, 1×[60,300]", ImagePath = GetPath("Head_E.png") },
-                new FieldArrangement { DisplayName = "F: 2×Half, 2×[60,300]", ImagePath = GetPath("Head_F.png") },
-            };
-            SelectedArrangement = Arrangements[1];
-
             // Set default checkbox values!
             AutomateIso = true;
             OptimiseCol = true;
@@ -180,7 +167,7 @@ namespace Plugin
             List<SimpleBeam> fieldGeometry = new List<SimpleBeam>();
             if (SelectedTabIndex == 0)
             {
-                fieldGeometry = null;
+                // do nothing! (existing geometry)
             }
             else if (SelectedTabIndex == 1) // 45° ROtations
             {
@@ -195,16 +182,16 @@ namespace Plugin
                 if (IsSelected45DegT315)
                     fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 180.1, GantryDirection.CounterClockwise, 45, "05_T315"));
             }
-            else // 60° ROtations
+            else if (SelectedTabIndex == 2) // 60° ROtations
             {
                 if (IsSelected60DegT0R)
-                    fieldGeometry.Add(new SimpleBeam());
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 180.1, 0, GantryDirection.Clockwise, 0, "01_T0"));
                 if (IsSelected60DegT0L)
-                    fieldGeometry.Add(new SimpleBeam());
-                if (IsSelected60DegT60)
-                    fieldGeometry.Add(new SimpleBeam());
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 179.9, GantryDirection.Clockwise, 0, "02_T0"));
                 if (IsSelected60DegT300)
-                    fieldGeometry.Add(new SimpleBeam());
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 300, "03_T60"));
+                if (IsSelected60DegT60)
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 180.1, GantryDirection.CounterClockwise, 60, "04_T300"));
             }
                 
 
