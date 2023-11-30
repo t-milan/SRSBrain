@@ -43,8 +43,8 @@ namespace VMS.TPS
             //Course course = patient.Courses.FirstOrDefault(c => c.Id == "MultiMetTest");
             //ExternalPlanSetup planSetup = course.ExternalPlanSetups.FirstOrDefault(ps => ps.Id == "Plan1");
 
-            TargetListViewModel targetListVM = new TargetListViewModel(new ContextModel(context));
-            TargetListControl targetListControl = new TargetListControl(targetListVM);
+            SRSViewModel srsViewModel = new SRSViewModel(new ContextModel(context));
+            SRSView srsView = new SRSView(srsViewModel);
 
             window.Width = 550;
             window.Height = 435;
@@ -53,7 +53,7 @@ namespace VMS.TPS
             Uri iconUri = new Uri(iconPath, UriKind.Absolute);
             window.Icon = BitmapFrame.Create(iconUri);
             //"450" d: DesignWidth = "800" >
-             window.Content = targetListControl;
+            window.Content = srsView;
         }
     }
 }

@@ -21,10 +21,10 @@ namespace Plugin
     /// </summary>
     
     
-    public partial class TargetListControl : UserControl
+    public partial class SRSView : UserControl
     {
 
-        public TargetListControl(TargetListViewModel viewModel)
+        public SRSView(SRSViewModel viewModel)
         {
             InitializeComponent();
             DataContext = viewModel;

@@ -87,10 +87,10 @@
     <Compile Include="Models\FieldArrangement.cs" />
     <Compile Include="Models\KMeans.cs" />
     <Compile Include="Models\OptimalCollimator.cs" />
-    <Compile Include="ViewModels\TargetListViewModel.cs" />
+    <Compile Include="ViewModels\SRSViewModel.cs" />
     <Compile Include="Plugin.cs" />
-    <Compile Include="Views\TargetListControl.xaml.cs">
-      <DependentUpon>TargetListControl.xaml</DependentUpon>
+    <Compile Include="Views\SRSView.xaml.cs">
+      <DependentUpon>SRSView.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -98,7 +98,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Views\TargetListControl.xaml">
+    <Page Include="Views\SRSView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
