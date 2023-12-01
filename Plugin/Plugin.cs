@@ -15,7 +15,7 @@ using System.Windows.Media.Imaging;
 //using MathNet.Numerics.LinearAlgebra; 
 
 // TODO: Replace the following version attributes by creating AssemblyInfo.cs. You can do this in the properties of the Visual Studio project.
-[assembly: AssemblyVersion("1.0.2.3")]
+[assembly: AssemblyVersion("1.0.2.7")]
 [assembly: AssemblyFileVersion("1.0.0.1")]
 [assembly: AssemblyInformationalVersion("1.0")]
 
@@ -46,8 +46,8 @@ namespace VMS.TPS
             SRSViewModel srsViewModel = new SRSViewModel(new ContextModel(context));
             SRSView srsView = new SRSView(srsViewModel);
 
-            window.Width = 550;
-            window.Height = 435;
+            window.Width = 560;
+            window.Height = 467;
             window.Title = "SRS Brain Treatment Geometry";
             string iconPath = "pack://application:,,,/" + Assembly.GetExecutingAssembly().GetName().Name + ";component/Resources/Head.ico";
             Uri iconUri = new Uri(iconPath, UriKind.Absolute);

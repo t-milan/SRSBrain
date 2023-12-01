@@ -12,6 +12,8 @@ using System.Windows;
 using System.Collections.ObjectModel;
 using Plugin.Models;
 using System.Reflection;
+using System.Globalization;
+using System.Windows.Data;
 
 namespace Plugin
 {
@@ -33,14 +35,34 @@ namespace Plugin
                 _selectableTargets.Add(new StructureRow() { structure = s, isChecked = false });
             }
 
+            //ImagePath45 = GetPath("Head_A.png");
+            //ImagePath60 = GetPath("Head_E.png");
+            SelectedTabIndex = 1; // 45 deg
+            TabsVisible = true;
+
             // Set default checkbox values!
             AutomateIso = true;
             OptimiseCol = true;
+
         }
 
-        private string GetPath(string resource)
+        //private string GetPath(string resource)
+        //{
+        //    return "pack://application:,,,/" + Assembly.GetExecutingAssembly().GetName().Name + ";component/Resources/" + resource;
+        //}
+
+        
+        private string _imagePath45;
+        public string ImagePath45
         {
-            return "pack://application:,,,/" + Assembly.GetExecutingAssembly().GetName().Name + ";component/Resources/" + resource;
+            get => _imagePath45;
+            set => Set(ref _imagePath45, value);
+        }
+        private string _imagePath60;
+        public string ImagePath60
+        {
+            get => _imagePath60;
+            set => Set(ref _imagePath60, value);
         }
 
 
@@ -61,11 +83,21 @@ namespace Plugin
         private void radioButtonClick(string name)
         {
             if (name == "ExistButton")
+            {
                 SelectedTabIndex = 0;
+                TabsVisible = false;
+            }
+
             else if (name == "45degButton")
+            { 
                 SelectedTabIndex = 1;
+                TabsVisible = true;
+            }
             else if (name == "60degButton")
+            { 
                 SelectedTabIndex = 2;
+                TabsVisible = true;
+            }
         }
 
         private int _selectedTabIndex;
@@ -75,63 +107,63 @@ namespace Plugin
             set => Set(ref _selectedTabIndex, value);
         }
 
-        private bool _isSelected45DegT0L;
+        private bool _isSelected45DegT0L = true;
         public bool IsSelected45DegT0L
         {
             get => _isSelected45DegT0L;
             set => Set(ref _isSelected45DegT0L, value);
         }
 
-        private bool _isSelected45DegT45;
+        private bool _isSelected45DegT45 = true;
         public bool IsSelected45DegT45
         {
             get => _isSelected45DegT45;
             set => Set(ref _isSelected45DegT45, value);
         }
 
-        private bool _isSelected45DegT90;
+        private bool _isSelected45DegT90 = true;
         public bool IsSelected45DegT90
         {
             get => _isSelected45DegT90;
             set => Set(ref _isSelected45DegT90, value);
         }
 
-        private bool _isSelected45DegT315;
+        private bool _isSelected45DegT315 = true;
         public bool IsSelected45DegT315
         {
             get => _isSelected45DegT315;
             set => Set(ref _isSelected45DegT315, value);
         }
 
-        private bool _isSelected45DegT0R;
+        private bool _isSelected45DegT0R = true;
         public bool IsSelected45DegT0R
         {
             get => _isSelected45DegT0R;
             set => Set(ref _isSelected45DegT0R, value);
         }
 
-        private bool _isSelected60DegT0L;
+        private bool _isSelected60DegT0L = true;
         public bool IsSelected60DegT0L
         {
             get => _isSelected60DegT0L;
             set => Set(ref _isSelected60DegT0L, value);
         }
 
-        private bool _isSelected60DegT60;
+        private bool _isSelected60DegT60 = true;
         public bool IsSelected60DegT60
         {
             get => _isSelected60DegT60;
             set => Set(ref _isSelected60DegT60, value);
         }
 
-        private bool _isSelected60DegT300;
+        private bool _isSelected60DegT300 = true;
         public bool IsSelected60DegT300
         {
             get => _isSelected60DegT300;
             set => Set(ref _isSelected60DegT300, value);
         }
 
-        private bool _isSelected60DegT0R;
+        private bool _isSelected60DegT0R = true;
         public bool IsSelected60DegT0R
         {
             get => _isSelected60DegT0R;
@@ -221,5 +253,35 @@ namespace Plugin
             Progress = progress;
         }
 
+
+        public bool _tabsVisible;
+        public bool TabsVisible
+        {
+            get => _tabsVisible;
+            set => Set(ref _tabsVisible, value);
+        }
+
+        
+
+    }
+    public class BooleanToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool && (bool)value)
+            {
+                return Visibility.Visible;
+            }
+            return Visibility.Collapsed; // or Visibility.Hidden
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is Visibility && (Visibility)value == Visibility.Visible)
+            {
+                return true;
+            }
+            return false;
+        }
     }
 }
