@@ -10,6 +10,7 @@ using System.Windows;
 
 using System.Security.Policy;
 using System.Xml.Linq;
+using Accord.MachineLearning;
 
 namespace Plugin.Models
 {
@@ -66,31 +67,72 @@ namespace Plugin.Models
                 names[i] = selectedTargets[i].Id;
             }
 
-            // Create a new K-Means algorithm with 3 clusters 
-            // Could also just do Accord.MachineLearning.KMeans kmeans = new KMeans(k: numClusters);
-            Accord.MachineLearning.KMeans kmeans = new Accord.MachineLearning.KMeans(k: numClusters);
-            //UseSeeding = Accord.MachineLearning.Seeding.PamBuild // Algorithm is KMeansPlusPlus by default. 
+            int numIterations = 10; // Number of times to run K-means
+            double bestError = double.MaxValue;
+            KMeansClusterCollection bestClusters = null;
+            int[] bestLabels = null;
 
-            // Compute and retrieve the data centroids
-            var clusters = kmeans.Learn(observations);
+            for (int iteration = 0; iteration < numIterations; iteration++)
+            {
+                Accord.MachineLearning.KMeans kmeans = new Accord.MachineLearning.KMeans(k: numClusters) { 
+                    Distance = 
+                };
 
-            // Use the centroids to parition all the data
-            labels = clusters.Decide(observations);
+                var clusters = kmeans.Learn(observations);
+                var labels = clusters.Decide(observations);
+
+                // Calculate the total within-cluster sum of squares for this solution
+                double error = CalculateTotalWithinClusterVariance(observations, labels, clusters);
+
+                // If this solution is better than what we've seen so far, keep it
+                if (error < bestError)
+                {
+                    bestError = error;
+                    bestClusters = clusters;
+                    bestLabels = labels;
+                }
+            }
 
             // Creating the dictionary
             clusterDictionary = new Dictionary<int, List<string>>();
 
-            for (int i = 0; i < labels.Length; i++)
+            for (int i = 0; i < bestLabels.Length; i++)
             {
                 // Check if the cluster label is already a key in the dictionary
-                if (!clusterDictionary.ContainsKey(labels[i]))
+                if (!clusterDictionary.ContainsKey(bestLabels[i]))
                 {
-                    clusterDictionary[labels[i]] = new List<string>();
+                    clusterDictionary[bestLabels[i]] = new List<string>();
                 }
 
                 // Add the observation to the corresponding cluster
-                clusterDictionary[labels[i]].Add(names[i]);
+                clusterDictionary[bestLabels[i]].Add(names[i]);
             }
+
+            // Sort them here?
+        }
+
+        // You'll need to implement this method to calculate the within-cluster variance
+        double CalculateTotalWithinClusterVariance(double[][] observations, int[] labels, KMeansClusterCollection clusters)
+        {
+            double totalVariance = 0;
+            for (int i = 0; i < observations.Length; i++)
+            {
+                int clusterIndex = labels[i];
+                var clusterCenter = clusters[clusterIndex].Centroid;
+                totalVariance += SquareDistance(observations[i], clusterCenter);
+            }
+            return totalVariance;
+        }
+
+        // Implement a squared distance function
+        double SquareDistance(double[] point, double[] center)
+        {
+            double distance = 0;
+            for (int i = 0; i < point.Length; i++)
+            {
+                distance += Math.Pow(point[i] - center[i], 2);
+            }
+            return distance;
         }
 
         public void WriteMessageOld()
