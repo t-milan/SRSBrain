@@ -328,7 +328,12 @@ namespace Plugin.Models
                 {
                     checkIsoMessage += "        ";
                     errorCheck = CheckSingleIsoPTVs(SelectedTargets);
-                    if (!String.IsNullOrEmpty(errorCheck))
+                    if (String.IsNullOrEmpty(errorCheck))
+                    {
+                        checkIsoMessage += "No issues detected";
+                        break;
+                    }
+                    else
                     {
                         checkIsoMessage += CheckSingleIsoPTVs(SelectedTargets);
                         lookAtNextIso = true;

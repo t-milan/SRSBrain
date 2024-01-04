@@ -11,11 +11,10 @@ using System.Windows;
 using System.Security.Policy;
 using System.Xml.Linq;
 using Accord.MachineLearning;
+using Accord.Math.Distances;
 
 namespace Plugin.Models
 {
-
-
     public class Pt3D
     {
         public double X, Y, Z;
@@ -74,9 +73,7 @@ namespace Plugin.Models
 
             for (int iteration = 0; iteration < numIterations; iteration++)
             {
-                Accord.MachineLearning.KMeans kmeans = new Accord.MachineLearning.KMeans(k: numClusters) { 
-                    Distance = 
-                };
+                Accord.MachineLearning.KMeans kmeans = new Accord.MachineLearning.KMeans(k: numClusters);
 
                 var clusters = kmeans.Learn(observations);
                 var labels = clusters.Decide(observations);
