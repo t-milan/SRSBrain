@@ -1,18 +1,25 @@
-﻿using System;
+﻿using SEB;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VMS.TPS.Common.Model.API;
+using System.Windows.Media.Media3D;
+using System.Windows;
+
+using System.Security.Policy;
+using System.Xml.Linq;
 
 namespace Plugin.Models
 {
 
 
-    public class Point3D
+    public class Pt3D
     {
         public double X, Y, Z;
 
-        public Point3D(double x, double y, double z)
+        public Pt3D(double x, double y, double z)
         {
             X = x;
             Y = y;
@@ -20,105 +27,104 @@ namespace Plugin.Models
         }
     }
 
-    public static class KMeans
+    public class KMeans
     {
-        public static List<Point3D> Cluster(List<Point3D> points, int numClusters, int maxIterations)
-        {
-            // Initialize centroids randomly
-            Random random = new Random();
-            List<Point3D> centroids = points.OrderBy(x => random.Next()).Take(numClusters).ToList();
 
-            for (int iteration = 0; iteration < maxIterations; iteration++)
-            {
-                List<List<Point3D>> clusters = new List<List<Point3D>>();
+        // Declare member variables
+        private double[][] observations;
+        private string[] names;
+        private int[] labels;
+        public Dictionary<int, List<string>> clusterDictionary;
+        // Dictionary is like {0: ["PTV1", "PTV3"], 1: ["PTV2"]}
 
-                for (int i = 0; i < numClusters; i++)
-                {
-                    clusters.Add(new List<Point3D>());
-                }
-
-                foreach (Point3D point in points)
-                {
-                    int closestCentroidIndex = GetClosestCentroidIndex(point, centroids);
-                    clusters[closestCentroidIndex].Add(point);
-                }
-
-                // Update centroids
-                for (int i = 0; i < numClusters; i++)
-                {
-                    if (clusters[i].Count > 0)
-                    {
-                        centroids[i] = GetCentroid(clusters[i]);
-                    }
-                }
-            }
-
-            return centroids;
-        }
-
-        private static int GetClosestCentroidIndex(Point3D point, List<Point3D> centroids)
-        {
-            int closestIndex = 0;
-            double minDistance = double.MaxValue;
-
-            for (int i = 0; i < centroids.Count; i++)
-            {
-                double distance = GetDistance(point, centroids[i]);
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    closestIndex = i;
-                }
-            }
-
-            return closestIndex;
-        }
-
-        private static double GetDistance(Point3D a, Point3D b)
-        {
-            return Math.Sqrt(Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2) + Math.Pow(a.Z - b.Z, 2));
-        }
-
-        private static Point3D GetCentroid(List<Point3D> points)
+        private static Pt3D GetCentroidOfStructure(Point3DCollection point3Ds)
         {
             double sumX = 0, sumY = 0, sumZ = 0;
-            int count = points.Count;
+            int count = point3Ds.Count;
 
-            foreach (Point3D point in points)
+            foreach (var point in point3Ds)
             {
                 sumX += point.X;
                 sumY += point.Y;
                 sumZ += point.Z;
             }
 
-            return new Point3D(sumX / count, sumY / count, sumZ / count);
+            return new Pt3D(sumX / count, sumY / count, sumZ / count);
+        }
+        
+        // Constructor
+        public KMeans(List<Structure> selectedTargets, int numClusters)
+        {
+            observations = new double[selectedTargets.Count][];
+            names = new string[selectedTargets.Count];
+
+            for (int i = 0; i < selectedTargets.Count; i++)
+            {
+                var c = GetCentroidOfStructure(selectedTargets[i].MeshGeometry.Positions);
+                
+                observations[i] = new double[] { c.X, c.Y, c.Z };
+                names[i] = selectedTargets[i].Id;
+            }
+
+            // Create a new K-Means algorithm with 3 clusters 
+            // Could also just do Accord.MachineLearning.KMeans kmeans = new KMeans(k: numClusters);
+            Accord.MachineLearning.KMeans kmeans = new Accord.MachineLearning.KMeans(k: numClusters);
+            //UseSeeding = Accord.MachineLearning.Seeding.PamBuild // Algorithm is KMeansPlusPlus by default. 
+
+            // Compute and retrieve the data centroids
+            var clusters = kmeans.Learn(observations);
+
+            // Use the centroids to parition all the data
+            labels = clusters.Decide(observations);
+
+            // Creating the dictionary
+            clusterDictionary = new Dictionary<int, List<string>>();
+
+            for (int i = 0; i < labels.Length; i++)
+            {
+                // Check if the cluster label is already a key in the dictionary
+                if (!clusterDictionary.ContainsKey(labels[i]))
+                {
+                    clusterDictionary[labels[i]] = new List<string>();
+                }
+
+                // Add the observation to the corresponding cluster
+                clusterDictionary[labels[i]].Add(names[i]);
+            }
+        }
+
+        public void WriteMessageOld()
+        {
+            string myMessage = "";
+            for (int i = 0; i < labels.Length; i++)
+            {
+                myMessage += $"{names[i]}: (Cluster {labels[i]}): " +
+                             $"\nCoordinates:({observations[i][0].ToString("F2")}, " +
+                             $"{observations[i][1].ToString("F2")}, " +
+                             $"{observations[i][2].ToString("F2")})\n\n";
+            }
+            MessageBox.Show(myMessage);
+        }
+
+        public void WriteMessage()
+        {
+            var stringBuilder = new StringBuilder();
+
+            foreach (var pair in clusterDictionary)
+            {
+                stringBuilder.AppendLine($"Isocentre {pair.Key}:");
+                foreach (var ptv in pair.Value)
+                    stringBuilder.AppendLine($"    {ptv}");
+                stringBuilder.AppendLine();
+            }
+
+            // Convert the StringBuilder to a string
+            string myMessage = stringBuilder.ToString();
+            MessageBox.Show(myMessage);
         }
     }
 
-    //public class MyProgram
-    //{
-    //    public static void Main(string[] args)
-    //    {
-    //        List<Point3D> points = new List<Point3D>
-    //    {
-    //        new Point3D(1, 1, 1),
-    //        new Point3D(2, 2, 2),
-    //        new Point3D(3, 3, 3),
-    //        new Point3D(10, 10, 10),
-    //        new Point3D(11, 11, 11),
-    //        new Point3D(14, 14, 10)
-    //    };
 
-    //        int numClusters = 2;
-    //        int maxIterations = 100;
 
-    //        List<Point3D> centroids = KMeans.Cluster(points, numClusters, maxIterations);
 
-    //        Console.WriteLine("Centroids:");
-    //        foreach (Point3D centroid in centroids)
-    //        {
-    //            Console.WriteLine($"({centroid.X}, {centroid.Y}, {centroid.Z})");
-    //        }
-    //    }
-    //}
 }

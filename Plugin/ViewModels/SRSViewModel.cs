@@ -25,15 +25,23 @@ namespace Plugin
         {
             _contextModel = contextModel;
             List<Structure> targetStructures = _contextModel.Context.ExternalPlanSetup.StructureSet.Structures.Where(
-                struc => (struc.DicomType == "PTV" || struc.DicomType == "GTV")
+                struc => (struc.DicomType == "PTV" || struc.DicomType == "CTV" || struc.DicomType == "GTV")
             ).ToList();
 
             // Populate the list of selectable targets with our target structures
             _selectableTargets = new List<StructureRow>();
             foreach (Structure s in targetStructures)
             {
-                _selectableTargets.Add(new StructureRow() { structure = s, isChecked = false });
+                if(!LowPriorityTargetID(s.Id))
+                    _selectableTargets.Add(new StructureRow() { structure = s, isChecked = false });
             }
+            foreach (Structure s in targetStructures)
+            {
+                if (LowPriorityTargetID(s.Id))
+                    _selectableTargets.Add(new StructureRow() { structure = s, isChecked = false });
+            }
+
+            // TODO: Handle the case of composite targets!!!!!
 
             //ImagePath45 = GetPath("Head_A.png");
             //ImagePath60 = GetPath("Head_E.png");
@@ -51,7 +59,26 @@ namespace Plugin
         //    return "pack://application:,,,/" + Assembly.GetExecutingAssembly().GetName().Name + ";component/Resources/" + resource;
         //}
 
-        
+        private static bool LowPriorityTargetID(string input)
+        {
+            // Convert the input string to lower case for case-insensitive comparison
+            input = input.ToLower();
+
+            // List of substrings to check
+            string[] substrings = new string[] { "+", "&", "and", "tot", "com", "ctv", "gtv", "ring" };
+
+            foreach (string substring in substrings)
+            {
+                if (input.Contains(substring))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
         private string _imagePath45;
         public string ImagePath45
         {
@@ -184,6 +211,20 @@ namespace Plugin
             set => Set(ref _optimiseCol, value);
         }
 
+        public ICommand CheckIsocentreCommand => new RelayCommand(CheckIsocentrePTVs);
+        private void CheckIsocentrePTVs()
+        {
+            _contextModel.SelectedTargets = _selectableTargets.Where(s => s.isChecked).Select(s => s.structure).ToList();
+            if (_contextModel.SelectedTargets.Count <= 1)
+            {
+                MessageBox.Show("Invalid selection");
+                return;
+            }
+
+            _contextModel.CheckIsocentrePTVs();
+
+        }
+
         public ICommand CalculateOptimalCollimatorCommand => new RelayCommand(CalculateOptimalCollimator);
         private async void CalculateOptimalCollimator()
         {
@@ -203,36 +244,40 @@ namespace Plugin
             }
             else if (SelectedTabIndex == 1) // 45° ROtations
             {
-                if (IsSelected45DegT0R)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 180.1, 0, GantryDirection.Clockwise, 0, "01_T0"));
                 if (IsSelected45DegT0L)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 179.9, GantryDirection.Clockwise, 0, "02_T0"));
-                if (IsSelected45DegT45)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 315, "03_T45"));
-                if (IsSelected45DegT90)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 179.9, GantryDirection.Clockwise, 270, "04_T90"));
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 0, "01_T0"));
+                if (IsSelected45DegT0R)
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 180.1, GantryDirection.CounterClockwise, 0, "02_T0"));
                 if (IsSelected45DegT315)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 180.1, GantryDirection.CounterClockwise, 45, "05_T315"));
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 180.1, 0, GantryDirection.Clockwise, 45, "03_T315"));
+                if (IsSelected45DegT45)
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 179.9, GantryDirection.Clockwise, 315, "04_T45"));
+                if (IsSelected45DegT90)
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 270, "05_T90"));
+
             }
-            else if (SelectedTabIndex == 2) // 60° ROtations
+            else if (SelectedTabIndex == 2) // 60° Rotations
             {
-                if (IsSelected60DegT0R)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 180.1, 0, GantryDirection.Clockwise, 0, "01_T0"));
                 if (IsSelected60DegT0L)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 179.9, GantryDirection.Clockwise, 0, "02_T0"));
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 0, "01_T0"));
+                if (IsSelected60DegT0R)
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 180.1, GantryDirection.CounterClockwise, 0, "02_T0"));
                 if (IsSelected60DegT300)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 300, "03_T60"));
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 180.1, 0, GantryDirection.Clockwise, 60, "03_T300"));
                 if (IsSelected60DegT60)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 180.1, GantryDirection.CounterClockwise, 60, "04_T300"));
+                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 179.9, GantryDirection.Clockwise, 300, "04_T60"));
             }
-                
 
+
+            bool success;
             if (AutomateIso)
-                _contextModel.AddBeams(IsoPlacement.BoundingSphere, fieldGeometry);
+                success = _contextModel.AddBeams(IsoPlacement.BoundingSphere, fieldGeometry);
             else
-                _contextModel.AddBeams(IsoPlacement.PreviousPlan, fieldGeometry);
+                success = _contextModel.AddBeams(IsoPlacement.PreviousPlan, fieldGeometry);
 
-            if (OptimiseCol)
+            // TODO: success = checkIso(...)
+
+            if (OptimiseCol && success)
                 await _contextModel.SetOptimalCollimator(new EventHandler<int>(OnProgressChanged));
 
             

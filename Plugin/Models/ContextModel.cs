@@ -9,6 +9,7 @@ using VMS.TPS.Common.Model.Types;
 using System.Windows;
 using System.Numerics;
 using System.Windows.Interop;
+using System.Runtime.ConstrainedExecution;
 
 namespace Plugin.Models
 {
@@ -17,6 +18,12 @@ namespace Plugin.Models
         BoundingSphere,
         CentreOfMass,
         PreviousPlan,
+    }
+
+    public class MapCheckError
+    {
+        public string QAPTV;
+        public string ConflictPTV;
     }
 
     public class ContextModel
@@ -66,16 +73,28 @@ namespace Plugin.Models
             newPlan.SetCalculationOption("PO_1610", "VMAT/ApertureShapeController", "Moderate");
         }
 
+
         public VVector CalcOptimalIso(IsoPlacement isoPlacement)
         {
             if (isoPlacement == IsoPlacement.BoundingSphere)
             {
                 var sphere = BoundingSphere.SphereFromTargets(SelectedTargets);
+                if (false) // DEBUG
+                    MessageBox.Show("Sphere radius: " + sphere.Radius.ToString());
+                if (sphere.Radius > 70)
+                {
+                    MessageBox.Show("PTVs too far off-axis. Multiple isocentres required.", "Warning", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                    return new VVector(double.NaN, double.NaN, double.NaN);
+                }
+                
+                
+
+
                 //VVector origin = Context.ExternalPlanSetup.StructureSet.Image.UserOrigin;
                 //double user_x = sphere.Center.X - origin.x;
                 //double user_y = sphere.Center.Y - origin.y;
                 //double user_z = sphere.Center.Z - origin.z;
-                
+
                 return new VVector(sphere.X, sphere.Y, sphere.Z);
             }
             else if (isoPlacement == IsoPlacement.CentreOfMass)
@@ -86,6 +105,7 @@ namespace Plugin.Models
             {
                 return Context.ExternalPlanSetup.Beams.First(b => !b.IsSetupField).IsocenterPosition;
                 // TODO: Possible error handling if there's no beams?
+                // TODO: Also return false if the radius ends up being >70?
             }
             
         }
@@ -102,9 +122,14 @@ namespace Plugin.Models
             return desiredId;
         }
 
-        public void AddBeams(IsoPlacement isoPlacement, List<SimpleBeam> beams)
+        public bool AddBeams(IsoPlacement isoPlacement, List<SimpleBeam> beams)
         {
             VVector isocenter = CalcOptimalIso(isoPlacement);// new VVector(x, y, z);
+            // If bounding radius was >70, don't do anything & return false
+            if (double.IsNaN(isocenter.x))
+            {
+                return false;
+            }
 
             // Do something with isocenter & PTVs!!!!!!!!!!!!!!!
             WarnPhysics(isocenter);
@@ -120,7 +145,7 @@ namespace Plugin.Models
                     pb.ApplyParameters(bp);
                 }
 
-                return;
+                return true;
             }
             // Otherwise, remove beams and add new ones. 
 
@@ -142,6 +167,8 @@ namespace Plugin.Models
                     nb.Id = fixId(b.Id);
                 }
             }
+
+            return true;
         }
 
         public List<double> GetMetersets(Beam beam)
@@ -254,6 +281,93 @@ namespace Plugin.Models
             return new VVector(centreOfMass.X, centreOfMass.Y, centreOfMass.Z);
         }
 
+        private string CheckSingleIsoPTVs(List<Structure> PTVgroup)
+        {
+            if (PTVgroup.Count == 0)
+            {
+                MessageBox.Show("Error: Shouldn't get here!");
+            }
+            string msg = "";
+            var sphere = BoundingSphere.SphereFromTargets(PTVgroup);
+            if (sphere.Radius > 70)
+                msg += "Warning: >7cm off-axis - not suitable.";
+            var mapCheckErrors = GetMapcheckErrors(PTVgroup);
+            foreach (var e in mapCheckErrors)
+            {
+                msg += $" {e.QAPTV} may not fit on MapCheck due to position of {e.ConflictPTV}.";
+            }
+            //return "Warning: >7cm radius. Warning: possily can't be QA'd on MapCheck.";
+            return msg;
+        }
+
+        private List<Structure> GetTargetSubset(List<Structure> selectedTargets, List<string> PTVIDs) 
+        { 
+            var newList = new List<Structure>();
+            foreach (var s in selectedTargets)
+            {
+                if (PTVIDs.Contains(s.Id))
+                    newList.Add(s);
+            }
+            return newList;
+        }
+
+        
+        public void CheckIsocentrePTVs()
+        {
+            string checkIsoMessage = "";
+            string errorCheck;
+            bool lookAtNextIso = true;
+            for (int i = 1; i <= SelectedTargets.Count; i++)
+            {
+                if (!lookAtNextIso && i>3)
+                    break;
+                lookAtNextIso = false;
+                
+                checkIsoMessage += $"{i} iso(s)\n";
+                if (i == 1)
+                {
+                    checkIsoMessage += "        ";
+                    errorCheck = CheckSingleIsoPTVs(SelectedTargets);
+                    if (!String.IsNullOrEmpty(errorCheck))
+                    {
+                        checkIsoMessage += CheckSingleIsoPTVs(SelectedTargets);
+                        lookAtNextIso = true;
+                    }
+                        
+                }
+                else
+                {
+                    var k = new KMeans(SelectedTargets, i);
+                    int isoNum = 1;
+                    
+                    // k.WriteMessage();
+
+                    foreach (var pair in k.clusterDictionary)
+                    {
+                        checkIsoMessage += $"    Group {isoNum}";
+                        checkIsoMessage += " (" + string.Join(", ", pair.Value) + ")";
+                        checkIsoMessage += "\n        ";
+                        var PTVsubset = GetTargetSubset(SelectedTargets, pair.Value);
+                        //MessageBox.Show("Looking at " + string.Join(", ", pair.Value)); // DEBUG
+                        errorCheck = CheckSingleIsoPTVs(PTVsubset);
+                        if (String.IsNullOrEmpty(errorCheck))
+                            checkIsoMessage += "No issues detected.";
+                        else
+                        {
+                            checkIsoMessage += errorCheck;
+                            lookAtNextIso = true;
+                        }
+                        checkIsoMessage += "\n";
+                        isoNum += 1;
+                    }
+                }
+
+                checkIsoMessage += "\n\n";
+
+            }
+            MessageBox.Show(checkIsoMessage);
+        }
+
         class TargetPositionData
         {
             public VVector cx;
@@ -261,6 +375,72 @@ namespace Plugin.Models
             public double Ymin; public double Ymax;
             public double Zmin; public double Zmax;
         }
+
+        
+        public List<MapCheckError> GetMapcheckErrors(List<Structure> PTVsubset)
+        {
+            var result = new List<MapCheckError>();
+            if (PTVsubset.Count <= 1)
+                return result;
+            
+            List<TargetPositionData> targetsData = new List<TargetPositionData>();
+            foreach (var t in PTVsubset)
+            {
+                var mesh = t.MeshGeometry.Positions;
+                double Xmin = double.PositiveInfinity, Xmax = double.NegativeInfinity;
+                double Ymin = double.PositiveInfinity, Ymax = double.NegativeInfinity;
+                double Zmin = double.PositiveInfinity, Zmax = double.NegativeInfinity;
+                foreach (var p in mesh)
+                {
+                    if (p.X < Xmin) { Xmin = p.X; }
+                    if (p.X > Xmax) { Xmax = p.X; }
+                    if (p.Y < Ymin) { Ymin = p.Y; }
+                    if (p.Y > Ymax) { Ymax = p.Y; }
+                    if (p.Z < Zmin) { Zmin = p.Z; }
+                    if (p.Z > Zmax) { Zmax = p.Z; }
+                }
+                var tpd = new TargetPositionData
+                {
+                    cx = t.CenterPoint,
+                    Xmin = Xmin,
+                    Xmax = Xmax,
+                    Ymin = Ymin,
+                    Ymax = Ymax,
+                    Zmin = Zmin,
+                    Zmax = Zmax
+                };
+                targetsData.Add(tpd);
+            }
+
+            // Iterate over all pairs of targets
+            for (int i = 0; i < PTVsubset.Count; i++)
+            {
+                for (int j = i + 1; j < PTVsubset.Count; j++)
+                {
+                    if (
+                        (targetsData[i].Zmax - targetsData[j].Zmin > 100) &&
+                        (targetsData[i].cx.y - targetsData[j].Ymax < 23 && targetsData[i].cx.y - targetsData[j].Ymin > -23) &&
+                        (targetsData[i].cx.x - targetsData[j].Xmax < 51 && targetsData[i].cx.x - targetsData[j].Xmin > -51)
+                    )
+                    {
+                        // Distance from top of detector plane to electornics is 116mm
+                        // Add 1.6 cm here for the 50% isodose. Therefore 100mm tol. 
+
+                        // Uh oh!
+                        MapCheckError e = new MapCheckError
+                        {
+                            QAPTV = PTVsubset[i].Id,
+                            ConflictPTV = PTVsubset[j].Id
+                        };
+                        result.Append(e);
+                    }
+                    // targetsData[j].Xmin
+                }
+            }
+            return result;
+        }
+
+
 
         /// <summary>
         /// Check if there exists a PTV which cannot be QA'd with MapCheck.
