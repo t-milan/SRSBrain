@@ -358,7 +358,11 @@ namespace Plugin
         // Find the MLC number a value 'y' is within
         private static int getMLCno(double y)
         {
-            if (y >= -200 && y < -100)
+            if (y < -200)
+            {
+                return -1;
+            }
+            else if (y < -100)
             {
                 return (int)(y + 200) / 10;
             }

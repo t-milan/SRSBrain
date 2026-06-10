@@ -319,7 +319,7 @@ namespace Plugin.Models
             bool lookAtNextIso = true;
             for (int i = 1; i <= SelectedTargets.Count; i++)
             {
-                if (!lookAtNextIso && i>3)
+                if (!lookAtNextIso)
                     break;
                 lookAtNextIso = false;
                 
@@ -335,7 +335,7 @@ namespace Plugin.Models
                     }
                     else
                     {
-                        checkIsoMessage += CheckSingleIsoPTVs(SelectedTargets);
+                        checkIsoMessage += errorCheck;
                         lookAtNextIso = true;
                     }
                         
@@ -417,11 +417,14 @@ namespace Plugin.Models
                 targetsData.Add(tpd);
             }
 
-            // Iterate over all pairs of targets
+            // Iterate over all ordered pairs of targets, so a conflict is
+            // found regardless of which target appears first in the list
             for (int i = 0; i < PTVsubset.Count; i++)
             {
-                for (int j = i + 1; j < PTVsubset.Count; j++)
+                for (int j = 0; j < PTVsubset.Count; j++)
                 {
+                    if (i == j)
+                        continue;
                     if (
                         (targetsData[i].Zmax - targetsData[j].Zmin > 100) &&
                         (targetsData[i].cx.y - targetsData[j].Ymax < 23 && targetsData[i].cx.y - targetsData[j].Ymin > -23) &&
@@ -429,7 +432,7 @@ namespace Plugin.Models
                     )
                     {
                         // Distance from top of detector plane to electornics is 116mm
-                        // Add 1.6 cm here for the 50% isodose. Therefore 100mm tol. 
+                        // Add 1.6 cm here for the 50% isodose. Therefore 100mm tol.
 
                         // Uh oh!
                         MapCheckError e = new MapCheckError
@@ -437,9 +440,8 @@ namespace Plugin.Models
                             QAPTV = PTVsubset[i].Id,
                             ConflictPTV = PTVsubset[j].Id
                         };
-                        result.Append(e);
+                        result.Add(e);
                     }
-                    // targetsData[j].Xmin
                 }
             }
             return result;
@@ -453,59 +455,11 @@ namespace Plugin.Models
         /// </summary>
         public void WarnPhysics(VVector isocenter)
         {
-            if (SelectedTargets.Count <= 1)
-                return;
-
-            List<TargetPositionData> targetsData = new List<TargetPositionData>();
-            foreach(var t in SelectedTargets)
+            foreach (var e in GetMapcheckErrors(SelectedTargets))
             {
-                var mesh = t.MeshGeometry.Positions;
-                double Xmin = double.PositiveInfinity, Xmax = double.NegativeInfinity;
-                double Ymin = double.PositiveInfinity, Ymax = double.NegativeInfinity;
-                double Zmin = double.PositiveInfinity, Zmax = double.NegativeInfinity;
-                foreach (var p in mesh)
-                {
-                    if (p.X < Xmin) { Xmin = p.X; }
-                    if (p.X > Xmax) { Xmax = p.X; }
-                    if (p.Y < Ymin) { Ymin = p.Y; }
-                    if (p.Y > Ymax) { Ymax = p.Y; }
-                    if (p.Z < Zmin) { Zmin = p.Z; }
-                    if (p.Z > Zmax) { Zmax = p.Z; }
-                }
-                var tpd = new TargetPositionData {
-                    cx = t.CenterPoint,
-                    Xmin = Xmin,
-                    Xmax = Xmax,
-                    Ymin = Ymin,
-                    Ymax = Ymax,
-                    Zmin = Zmin,
-                    Zmax = Zmax
-                };
-                targetsData.Add(tpd);
+                var debugMsg = String.Format("{0} may not be able to fit on MapCheck due to position of {1}", e.QAPTV, e.ConflictPTV);
+                MessageBox.Show(debugMsg, "Possible QA Issue", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            // Iterate over all pairs of targets
-            for (int i = 0; i < SelectedTargets.Count; i++)
-            {
-                for (int j = i + 1; j < SelectedTargets.Count; j++)
-                {
-                    if(
-                        (targetsData[i].Zmax - targetsData[j].Zmin > 100) &&
-                        (targetsData[i].cx.y - targetsData[j].Ymax < 23 && targetsData[i].cx.y - targetsData[j].Ymin > -23) &&
-                        (targetsData[i].cx.x - targetsData[j].Xmax < 51 && targetsData[i].cx.x - targetsData[j].Xmin > -51)
-                    )
-                    {
-                        // Distance from top of detector plane to electornics is 116mm
-                        // Add 1.6 cm here for the 50% isodose. Therefore 100mm tol. 
-
-                        // Uh oh!
-                        var debugMsg = String.Format("{0} may not be able to fit on MapCheck due to position of {1}", SelectedTargets[i].Id, SelectedTargets[j].Id);
-                        MessageBox.Show(debugMsg, "Possible QA Issue", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                    // targetsData[j].Xmin
-                }
-            }
-
         }
     }
 }
