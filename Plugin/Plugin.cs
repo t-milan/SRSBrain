@@ -15,7 +15,7 @@ using System.Windows.Media.Imaging;
 //using MathNet.Numerics.LinearAlgebra; 
 
 // TODO: Replace the following version attributes by creating AssemblyInfo.cs. You can do this in the properties of the Visual Studio project.
-[assembly: AssemblyVersion("1.0.3.5")]
+[assembly: AssemblyVersion("1.0.4.2")]
 [assembly: AssemblyFileVersion("1.0.0.1")]
 [assembly: AssemblyInformationalVersion("1.0")]
 

@@ -43,7 +43,7 @@ namespace Plugin.Models
             Context = context;
             SelectedTargets = new List<Structure>();
 
-            ebmp = new ExternalBeamMachineParameters("Acacia", "6X", 1400, "SRS ARC", "FFF");
+            ebmp = new ExternalBeamMachineParameters("MARRI", "6X", 1400, "SRS ARC", "FFF");
 
             for (int i = 0; i < 91; i++)
                 halfArcMetersets[i] = i / 90.0;
@@ -56,21 +56,28 @@ namespace Plugin.Models
             Context.Patient.BeginModifications();
             newPlan = Context.ExternalPlanSetup;
 
-            newPlan.SetCalculationModel(CalculationType.PhotonVolumeDose, "AXB_16.1_1,0.5");
-            newPlan.SetCalculationOption("AXB_16.1_1,0.5", "CalculationGridSizeInCM", "0.125");
-            newPlan.SetCalculationOption("AXB_16.1_1,0.5", "CalculationGridSizeInCMForSRSAndHyperArc", "0.125");
-            newPlan.SetCalculationOption("AXB_16.1_1,0.5", "UseGPU", "Yes");
+            newPlan.SetCalculationModel(CalculationType.PhotonVolumeDose, "AXB_18.0_0.5,0.7");
+            newPlan.SetCalculationOption("AXB_18.0_0.5,0.7", "CalculationGridSizeInCM", "0.1");
+            newPlan.SetCalculationOption("AXB_18.0_0.5,0.7", "CalculationGridSizeInCMForSRSAndHyperArc", "0.1");
+            newPlan.SetCalculationOption("AXB_18.0_0.5,0.7", "UseGPU", "Yes");
 
             try  {
-                newPlan.SetCalculationModel(CalculationType.PhotonOptimization, "PO_1610"); // Clinical 
+                newPlan.SetCalculationModel(CalculationType.PhotonOptimization, "PO_18.0_0.5,0.7"); // Clinical 
+
+                newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "General/OptimizerSettings/DoseCalculationResolution", "High");
+                newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "General/OptimizerSettings/DoseCalculationResolutionForSRSAndHyperarc", "High");
+                newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "General/OptimizerSettings/UseGPU", "Yes");
+                newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "VMAT/ApertureShapeController", "Moderate");
             } catch {
                 newPlan.SetCalculationModel(CalculationType.PhotonOptimization, "PO_16.1"); // Tbox
+
+                newPlan.SetCalculationOption("PO_16.1", "General/OptimizerSettings/DoseCalculationResolution", "High");
+                newPlan.SetCalculationOption("PO_16.1", "General/OptimizerSettings/DoseCalculationResolutionForSRSAndHyperarc", "High");
+                newPlan.SetCalculationOption("PO_16.1", "General/OptimizerSettings/UseGPU", "Yes");
+                newPlan.SetCalculationOption("PO_16.1", "VMAT/ApertureShapeController", "Moderate");
             }
 
-            newPlan.SetCalculationOption("PO_1610", "General/OptimizerSettings/DoseCalculationResolution", "High");
-            newPlan.SetCalculationOption("PO_1610", "General/OptimizerSettings/DoseCalculationResolutionForSRSAndHyperarc", "High");
-            newPlan.SetCalculationOption("PO_1610", "General/OptimizerSettings/UseGPU", "Yes");
-            newPlan.SetCalculationOption("PO_1610", "VMAT/ApertureShapeController", "Moderate");
+            
         }
 
 
@@ -87,9 +94,6 @@ namespace Plugin.Models
                     return new VVector(double.NaN, double.NaN, double.NaN);
                 }
                 
-                
-
-
                 //VVector origin = Context.ExternalPlanSetup.StructureSet.Image.UserOrigin;
                 //double user_x = sphere.Center.X - origin.x;
                 //double user_y = sphere.Center.Y - origin.y;
