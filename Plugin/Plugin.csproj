@@ -154,7 +154,7 @@
   </Target>
   <!--
     Deployment layout: the plugin's own assembly (SRSBrain.esapi.dll + .pdb + .dll.config)
-    stays at the output root (the Eclipse script folder); every dependency .dll/.pdb/.xml
+    stays at the output root (the Eclipse script folder); every dependency .dll/.pdb/.xml/.config
     is moved into Lib\SRSBrain. The AssemblyResolve handler in Script's static constructor
     loads them back from there at runtime. Self-healing on incremental builds: MSBuild
     recopies changed deps to the root and this target re-moves them.
@@ -164,8 +164,8 @@
       <LibFolder>$(OutputPath)Lib\SRSBrain</LibFolder>
     </PropertyGroup>
     <ItemGroup>
-      <DependencyAssemblies Include="$(OutputPath)*.dll;$(OutputPath)*.pdb;$(OutputPath)*.xml"
-        Exclude="$(OutputPath)$(AssemblyName).dll;$(OutputPath)$(AssemblyName).pdb;$(OutputPath)$(AssemblyName).xml" />
+      <DependencyAssemblies Include="$(OutputPath)*.dll;$(OutputPath)*.pdb;$(OutputPath)*.xml;$(OutputPath)*.config"
+        Exclude="$(OutputPath)$(AssemblyName).dll;$(OutputPath)$(AssemblyName).pdb;$(OutputPath)$(AssemblyName).xml;$(OutputPath)$(AssemblyName).dll.config" />
     </ItemGroup>
     <MakeDir Directories="$(LibFolder)" />
     <Move SourceFiles="@(DependencyAssemblies)" DestinationFolder="$(LibFolder)"

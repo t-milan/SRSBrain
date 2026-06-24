@@ -82,14 +82,15 @@ SRSBrain.esapi.dll
 SRSBrain.esapi.dll.config
 SRSBrain.esapi.pdb        (optional; debug symbols only)
 Lib\SRSBrain\
-    GalaSoft.MvvmLight.dll, Accord*.dll, miniball.dll, ... (+ matching .pdb/.xml)
+    GalaSoft.MvvmLight.dll, Accord*.dll, miniball.dll, ... (+ matching .pdb/.xml/.config)
 ```
 
 Two pieces make this work:
 
 - **Build time** — the `MoveDependenciesToLib` post-build target in `Plugin.csproj` moves every
-  output `*.dll`/`*.pdb`/`*.xml` except the plugin's own (`SRSBrain.esapi.*`) into
-  `Lib\SRSBrain`. It is self-healing on incremental builds.
+  output `*.dll`/`*.pdb`/`*.xml`/`*.config` except the plugin's own (`SRSBrain.esapi.dll`,
+  `.pdb`, `.dll.config`) into `Lib\SRSBrain`. This includes side-car config files such as
+  `Accord.dll.config`. It is self-healing on incremental builds.
 - **Runtime** — the static constructor of `VMS.TPS.Script` registers an
   `AppDomain.CurrentDomain.AssemblyResolve` handler that loads requested assemblies from
   `Lib\SRSBrain` (relative to the plugin's own location). This must be a static constructor on
