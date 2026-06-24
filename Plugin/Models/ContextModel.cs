@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using EsapiEssentials.Plugin; //PluginScriptContext context
 using VMS.TPS.Common.Model.API;
 using VMS.TPS.Common.Model.Types;
 using System.Windows;
@@ -28,7 +27,7 @@ namespace Plugin.Models
 
     public class ContextModel
     {
-        public PluginScriptContext Context;
+        public ScriptContext Context;
         public List<Structure> SelectedTargets;
         private ExternalBeamMachineParameters ebmp;
         public ExternalPlanSetup newPlan;
@@ -38,7 +37,7 @@ namespace Plugin.Models
         
 
 
-        public ContextModel(PluginScriptContext context)
+        public ContextModel(ScriptContext context)
         {
             Context = context;
             SelectedTargets = new List<Structure>();

@@ -37,7 +37,7 @@ For the selected targets, the tool evaluates how many isocentres are needed:
 ```
 SRSBrain.sln
 ├── Plugin/                  # The ESAPI plugin (builds SRSBrain.esapi.dll), MVVM layout
-│   ├── Plugin.cs            #   Script entry point (VMS.TPS.Script via EsapiEssentials)
+│   ├── Plugin.cs            #   Script entry point (native VMS.TPS.Script + assembly resolver)
 │   ├── Models/
 │   │   ├── ContextModel.cs        # Plan/beam manipulation, iso checks, MapCheck checks
 │   │   ├── BoundingSphere.cs      # Minimal enclosing sphere of target meshes (miniball)
@@ -47,20 +47,55 @@ SRSBrain.sln
 │   ├── ViewModels/SRSViewModel.cs # UI state, commands, beam template definitions
 │   ├── Views/SRSView.xaml         # Target list, arrangement picker, run button
 │   └── Resources/                 # Head diagrams and icon
-├── PluginRunner_WPF/        # Standalone WPF harness for running/debugging the plugin
-│                            # outside Eclipse (EsapiEssentials.PluginRunner)
 └── miniball_csharp/         # C# port of the "miniball" smallest-enclosing-ball
     ├── miniball/            # algorithm (SEB namespace), with example and tests
     ├── example/
     └── test/
 ```
 
+The plugin is a plain native ESAPI binary plugin: `VMS.TPS.Script` has no external
+base class and exposes a `public void Execute(ScriptContext context, Window window)`
+entry point. (It was previously built on `EsapiEssentials.ScriptBaseWithWindow` /
+`PluginScriptContext`; that abstraction and the separate `PluginRunner_WPF` harness
+have been removed in favour of the single-project layout above.)
+
 ## Building
 
-- Visual Studio solution, **.NET Framework 4.8**, the plugin must be built **x64** (to match Eclipse).
-- References the Varian **ESAPI** assemblies (`VMS.TPS.Common.Model.API/Types`) via a relative hint path (`..\..\..\esapi\API\`) — adjust to your ESAPI installation.
-- NuGet packages: EsapiEssentials, MvvmLightLibs, Accord / Accord.MachineLearning, MathNet.Numerics, ParallelExtensionsExtras (restore via NuGet).
-- Output is `SRSBrain.esapi.dll`, a writeable ESAPI plugin (`[assembly: ESAPIScript(IsWriteable = true)]`); run it from Eclipse's script window, or debug via the `PluginRunner_WPF` harness.
+- Visual Studio solution, **.NET Framework 4.8**, built **x64** only (to match Eclipse); the
+  solution carries just `Debug|x64` / `Release|x64` configurations.
+- References the Varian **ESAPI** assemblies (`VMS.TPS.Common.Model.API/Types`) via a relative
+  hint path (`..\..\..\esapi\API\`) — adjust to your ESAPI installation. These are marked
+  `<Private>False</Private>` so they are never copied to the output (Eclipse provides them).
+- NuGet packages: MvvmLightLibs (+ its transitive CommonServiceLocator and
+  System.Windows.Interactivity) and Accord / Accord.MachineLearning / Accord.Math /
+  Accord.Statistics (restore via NuGet). `miniball` is a project reference.
+- Output is `SRSBrain.esapi.dll`, a writeable ESAPI plugin
+  (`[assembly: ESAPIScript(IsWriteable = true)]`); run it from Eclipse's script window.
+
+## Deployment layout & assembly resolution
+
+Eclipse's script folder only probes for assemblies in the folder itself, so dependencies are
+deployed in a `Lib\SRSBrain` subfolder and loaded explicitly at runtime:
+
+```
+SRSBrain.esapi.dll
+SRSBrain.esapi.dll.config
+SRSBrain.esapi.pdb        (optional; debug symbols only)
+Lib\SRSBrain\
+    GalaSoft.MvvmLight.dll, Accord*.dll, miniball.dll, ... (+ matching .pdb/.xml)
+```
+
+Two pieces make this work:
+
+- **Build time** — the `MoveDependenciesToLib` post-build target in `Plugin.csproj` moves every
+  output `*.dll`/`*.pdb`/`*.xml` except the plugin's own (`SRSBrain.esapi.*`) into
+  `Lib\SRSBrain`. It is self-healing on incremental builds.
+- **Runtime** — the static constructor of `VMS.TPS.Script` registers an
+  `AppDomain.CurrentDomain.AssemblyResolve` handler that loads requested assemblies from
+  `Lib\SRSBrain` (relative to the plugin's own location). This must be a static constructor on
+  a class whose loadable surface carries no dependency types, so the resolver is registered
+  before the CLR needs to load any dependency; all dependency usage stays inside `Execute`'s
+  body, which is JIT-compiled only after the static constructor has run.
 
 ## Important caveats
 

@@ -50,14 +50,8 @@
     <Reference Include="Accord.Statistics, Version=3.8.0.0, Culture=neutral, PublicKeyToken=fa1a88e29555ccf7, processorArchitecture=MSIL">
       <HintPath>..\packages\Accord.Statistics.3.8.0\lib\net462\Accord.Statistics.dll</HintPath>
     </Reference>
-    <Reference Include="CommandLine, Version=2.9.1.0, Culture=neutral, PublicKeyToken=5a870481e358d379, processorArchitecture=MSIL">
-      <HintPath>..\packages\CommandLineParser.2.9.1\lib\net461\CommandLine.dll</HintPath>
-    </Reference>
     <Reference Include="CommonServiceLocator, Version=2.0.7.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
       <HintPath>..\packages\CommonServiceLocator.2.0.7\lib\net48\CommonServiceLocator.dll</HintPath>
-    </Reference>
-    <Reference Include="EsapiEssentials, Version=2.0.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <HintPath>..\packages\EsapiEssentials.2.0.0\lib\net45\EsapiEssentials.dll</HintPath>
     </Reference>
     <Reference Include="GalaSoft.MvvmLight, Version=5.4.1.0, Culture=neutral, PublicKeyToken=e7570ab207bcb616, processorArchitecture=MSIL">
       <HintPath>..\packages\MvvmLightLibs.5.4.1.1\lib\net45\GalaSoft.MvvmLight.dll</HintPath>
@@ -67,12 +61,6 @@
     </Reference>
     <Reference Include="GalaSoft.MvvmLight.Platform, Version=5.4.1.0, Culture=neutral, PublicKeyToken=5f873c45e98af8a1, processorArchitecture=MSIL">
       <HintPath>..\packages\MvvmLightLibs.5.4.1.1\lib\net45\GalaSoft.MvvmLight.Platform.dll</HintPath>
-    </Reference>
-    <Reference Include="MathNet.Numerics, Version=5.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\MathNet.Numerics.5.0.0\lib\net48\MathNet.Numerics.dll</HintPath>
-    </Reference>
-    <Reference Include="ParallelExtensionsExtras, Version=1.2.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\MSFT.ParallelExtensionsExtras.1.2.0\lib\ParallelExtensionsExtras.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -90,9 +78,11 @@
     </Reference>
     <Reference Include="VMS.TPS.Common.Model.API">
       <HintPath>..\..\..\..\esapi\API\VMS.TPS.Common.Model.API.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VMS.TPS.Common.Model.Types">
       <HintPath>..\..\..\..\esapi\API\VMS.TPS.Common.Model.Types.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
@@ -161,5 +151,24 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\Accord.3.8.0\build\Accord.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Accord.3.8.0\build\Accord.targets'))" />
+  </Target>
+  <!--
+    Deployment layout: the plugin's own assembly (SRSBrain.esapi.dll + .pdb + .dll.config)
+    stays at the output root (the Eclipse script folder); every dependency .dll/.pdb/.xml
+    is moved into Lib\SRSBrain. The AssemblyResolve handler in Script's static constructor
+    loads them back from there at runtime. Self-healing on incremental builds: MSBuild
+    recopies changed deps to the root and this target re-moves them.
+  -->
+  <Target Name="MoveDependenciesToLib" AfterTargets="Build">
+    <PropertyGroup>
+      <LibFolder>$(OutputPath)Lib\SRSBrain</LibFolder>
+    </PropertyGroup>
+    <ItemGroup>
+      <DependencyAssemblies Include="$(OutputPath)*.dll;$(OutputPath)*.pdb;$(OutputPath)*.xml"
+        Exclude="$(OutputPath)$(AssemblyName).dll;$(OutputPath)$(AssemblyName).pdb;$(OutputPath)$(AssemblyName).xml" />
+    </ItemGroup>
+    <MakeDir Directories="$(LibFolder)" />
+    <Move SourceFiles="@(DependencyAssemblies)" DestinationFolder="$(LibFolder)"
+      OverwriteReadOnlyFiles="true" Condition="'@(DependencyAssemblies)' != ''" />
   </Target>
 </Project>
