@@ -8,7 +8,7 @@ using Plugin;
 using Plugin.Models;
 
 // TODO: Replace the following version attributes by creating AssemblyInfo.cs. You can do this in the properties of the Visual Studio project.
-[assembly: AssemblyVersion("1.0.4.3")]
+[assembly: AssemblyVersion("1.0.4.4")]
 [assembly: AssemblyFileVersion("1.0.0.1")]
 [assembly: AssemblyInformationalVersion("1.0")]
 

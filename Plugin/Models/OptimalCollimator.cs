@@ -73,6 +73,28 @@ namespace Plugin
             return (Sanitised(ColResults[index1].Col), Sanitised(ColResults[index2].Col));
         }
         
+        public List<int> OptimalCols(int n)
+        {
+            // For 3+ arcs sharing a geometry: take angles from best to worst,
+            // keeping only those >= 10 deg from every angle already chosen;
+            // top up from the best remaining if the spacing runs out.
+            var ranked = ColResults.OrderBy(c => c.IslandArea).ThenBy(c => c.TotalArea).ToList();
+            var chosen = new List<int>();
+            foreach (var c in ranked)
+            {
+                if (chosen.Count == n) break;
+                if (chosen.All(x => Math.Abs(x - c.Col) >= 10))
+                    chosen.Add(c.Col);
+            }
+            foreach (var c in ranked)
+            {
+                if (chosen.Count == n) break;
+                if (!chosen.Contains(c.Col))
+                    chosen.Add(c.Col);
+            }
+            return chosen.Select(Sanitised).ToList();
+        }
+
         public int OptimalCol()
         {
             
@@ -139,12 +161,33 @@ namespace Plugin
             VVector isoPos = _beam.IsocenterPosition;
 
             List<Tuple<double, double>> cpData = new List<Tuple<double, double>>();
-            foreach (ControlPoint cp in _beam.ControlPoints)
+            if (_beam.ControlPoints.Count >= 10)
             {
-                // Get couch and gantry angles
-                double couch = cp.PatientSupportAngle;
-                double gantry = cp.GantryAngle;
-                cpData.Add(Tuple.Create(couch, gantry));
+                foreach (ControlPoint cp in _beam.ControlPoints)
+                {
+                    // Get couch and gantry angles
+                    double couch = cp.PatientSupportAngle;
+                    double gantry = cp.GantryAngle;
+                    cpData.Add(Tuple.Create(couch, gantry));
+                }
+            }
+            else
+            {
+                // Manually placed (unoptimised) arcs only carry their start/stop
+                // control points, so sample the swept arc at ~2 deg rather than
+                // scoring just the endpoints.
+                double couch = _beam.ControlPoints.First().PatientSupportAngle;
+                double start = _beam.ControlPoints.First().GantryAngle;
+                double stop = _beam.ControlPoints.Last().GantryAngle;
+                bool clockwise = _beam.GantryDirection == GantryDirection.Clockwise;
+                double span = clockwise ? (stop - start + 360) % 360 : (start - stop + 360) % 360;
+                int steps = Math.Max(1, (int)Math.Round(span / 2));
+                for (int i = 0; i <= steps; i++)
+                {
+                    double gantry = clockwise ? start + span * i / steps : start - span * i / steps;
+                    gantry = (gantry % 360 + 360) % 360;
+                    cpData.Add(Tuple.Create(couch, gantry));
+                }
             }
             
             //Result = ColOptimiser(isoPos, cpData, MeshGeometries);
