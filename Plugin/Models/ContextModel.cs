@@ -188,6 +188,21 @@ namespace Plugin.Models
         public void ChangeBeamCol(Beam oldBeam, int col)
         {
             var msets = GetMetersets(oldBeam);
+            // Manually placed (unoptimised) arcs only carry their start/stop
+            // control points; the recreated VMAT beam needs a proper control
+            // point sequence, so rebuild the meterset ramp at ~2 deg spacing.
+            if (msets.Count < 10)
+            {
+                double start = oldBeam.ControlPoints.First().GantryAngle;
+                double stop = oldBeam.ControlPoints.Last().GantryAngle;
+                double span = oldBeam.GantryDirection == GantryDirection.Clockwise
+                    ? (stop - start + 360) % 360
+                    : (start - stop + 360) % 360;
+                int steps = Math.Max(1, (int)Math.Round(span / 2));
+                msets = new List<double>();
+                for (int i = 0; i <= steps; i++)
+                    msets.Add((double)i / steps);
+            }
             string id = oldBeam.Id;
             Beam newBeam = newPlan.AddVMATBeam(ebmp, 
                 msets, 
@@ -210,9 +225,11 @@ namespace Plugin.Models
             // POPULATE DICT
             foreach(var b in newPlan.Beams)
             {
-                // ignore non-MLC and setup fields
+                // ignore setup and static (non-arc) fields. Manually placed arcs
+                // that haven't been optimised yet carry no MLC, so don't require
+                // one here - ChangeBeamCol recreates the beam as a VMAT beam.
                 if (b.IsSetupField) continue;
-                if (b.MLC == null) continue;
+                if (b.GantryDirection == GantryDirection.None) continue;
 
                 var lower = Math.Min(b.ControlPoints.First().GantryAngle, b.ControlPoints.Last().GantryAngle);
                 var upper = Math.Max(b.ControlPoints.First().GantryAngle, b.ControlPoints.Last().GantryAngle);
@@ -228,6 +245,13 @@ namespace Plugin.Models
                     l.Add(b);
                     geoms.Add(key, l);
                 }
+            }
+
+            if (geoms.Count == 0)
+            {
+                MessageBox.Show("No arc treatment fields found in the plan - collimator optimisation was skipped.",
+                    "Collimator Optimisation", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
             }
 
             int numGs = geoms.Count;
@@ -249,7 +273,9 @@ namespace Plugin.Models
                 }
                 else
                 {
-                    // PANIC PANIC PANIC TODO
+                    var cols = optimalCol.Result.OptimalCols(geom.Value.Count);
+                    for (int i = 0; i < geom.Value.Count; i++)
+                        ChangeBeamCol(geom.Value[i], cols[i]);
                 }
                 
                 n += 1;
