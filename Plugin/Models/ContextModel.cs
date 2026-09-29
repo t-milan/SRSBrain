@@ -85,8 +85,6 @@ namespace Plugin.Models
             if (isoPlacement == IsoPlacement.BoundingSphere)
             {
                 var sphere = BoundingSphere.SphereFromTargets(SelectedTargets);
-                if (false) // DEBUG
-                    MessageBox.Show("Sphere radius: " + sphere.Radius.ToString());
                 if (sphere.Radius > 70)
                 {
                     MessageBox.Show("PTVs too far off-axis. Multiple isocentres required.", "Warning", MessageBoxButton.OK, MessageBoxImage.Exclamation);
