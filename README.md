@@ -26,11 +26,13 @@ For the selected targets, the tool evaluates how many isocentres are needed:
 ### 2. Run the script (geometry automation)
 - **Field arrangement** — choose one of:
   - *Use existing geometry* (keep the plan's current beams),
-  - *45° couch kicks* — up to five half arcs at couch 0/45/90/315 (selectable via checkboxes on a head diagram),
+  - *45° couch kicks* — up to five half arcs at couch 0/45/315 plus a vertex arc at 90 or 270 (selectable via checkboxes on a head diagram),
   - *60° couch kicks* — up to four half arcs at couch 0/60/300.
+
+  Template fields are put in delivery order: the first field starts at gantry 180 (where the gantry is after the CBCT, couch 0), then the order and arc directions minimise couch plus gantry travel, never needing a gantry move that swings through the couch (e.g. 179 → 0 via 90 at couch 315). The vertex field goes at couch 90 or 270 (equivalent beams), whichever fits the order best — so a one-sided 0/315 set gets a 270 vertex. Field IDs are numbered in delivery order, and collimator optimisation keeps that order.
 - **Automated isocentre placement** (optional) — sets the isocentre to the centre of the targets' minimal enclosing sphere (refuses and warns if the bounding radius is > 70 mm); otherwise reuses the isocentre of the existing plan's beams.
 - **Collimator optimisation** (optional) — for each unique arc geometry, simulates the beam's-eye view of all target meshes across every control point and every collimator angle (5°–175°), bins projected points into the 60 MLC leaf-pair rows (Millennium 120 layout: 10 mm outer, 5 mm central leaves), and scores each angle by total "island" area (unshieldable gaps between targets within a leaf pair) with total open area as a tie-breaker. Arcs sharing a geometry get the best angles at least 10° apart (exhaustive pair search for two arcs, greedy selection for three or more). The calculation runs in parallel with a progress bar.
-- The plan's dose calculation model (Acuros AXB, 1.25 mm grid, GPU), optimiser model and SRS-appropriate options are set automatically, and a warning dialog is raised at run time if any selected target pair looks un-QA-able on MapCheck.
+- The plan's dose calculation model (Acuros AXB, 1.25 mm grid, GPU), optimiser model and SRS-appropriate options (including Aperture Shape Controller = High) are set automatically, and a warning dialog is raised at run time if any selected target pair looks un-QA-able on MapCheck.
 
 ## Repository structure
 

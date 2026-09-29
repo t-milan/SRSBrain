@@ -66,14 +66,14 @@ namespace Plugin.Models
                 newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "General/OptimizerSettings/DoseCalculationResolution", "High");
                 newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "General/OptimizerSettings/DoseCalculationResolutionForSRSAndHyperarc", "High");
                 newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "General/OptimizerSettings/UseGPU", "Yes");
-                newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "VMAT/ApertureShapeController", "Moderate");
+                newPlan.SetCalculationOption("PO_18.0_0.5,0.7", "VMAT/ApertureShapeController", "High");
             } catch {
                 newPlan.SetCalculationModel(CalculationType.PhotonOptimization, "PO_16.1"); // Tbox
 
                 newPlan.SetCalculationOption("PO_16.1", "General/OptimizerSettings/DoseCalculationResolution", "High");
                 newPlan.SetCalculationOption("PO_16.1", "General/OptimizerSettings/DoseCalculationResolutionForSRSAndHyperarc", "High");
                 newPlan.SetCalculationOption("PO_16.1", "General/OptimizerSettings/UseGPU", "Yes");
-                newPlan.SetCalculationOption("PO_16.1", "VMAT/ApertureShapeController", "Moderate");
+                newPlan.SetCalculationOption("PO_16.1", "VMAT/ApertureShapeController", "High");
             }
 
             
@@ -85,8 +85,6 @@ namespace Plugin.Models
             if (isoPlacement == IsoPlacement.BoundingSphere)
             {
                 var sphere = BoundingSphere.SphereFromTargets(SelectedTargets);
-                if (false) // DEBUG
-                    MessageBox.Show("Sphere radius: " + sphere.Radius.ToString());
                 if (sphere.Radius > 70)
                 {
                     MessageBox.Show("PTVs too far off-axis. Multiple isocentres required.", "Warning", MessageBoxButton.OK, MessageBoxImage.Exclamation);
@@ -256,6 +254,7 @@ namespace Plugin.Models
 
             int numGs = geoms.Count;
             int n = 0;
+            var newCols = new Dictionary<string, int>(); // beam ID -> collimator angle
             foreach(var geom in geoms)
             {
                 var optimalCol = new OptimalCollimator(geom.Value[0]);
@@ -265,22 +264,30 @@ namespace Plugin.Models
                 if (geom.Value.Count == 2)
                 {
                     var x = optimalCol.Result.OptimalCols();
-                    ChangeBeamCol(geom.Value[0], x.Item1);
-                    ChangeBeamCol(geom.Value[1], x.Item2);
+                    newCols[geom.Value[0].Id] = x.Item1;
+                    newCols[geom.Value[1].Id] = x.Item2;
                 } else if (geom.Value.Count == 1)
                 {
-                    ChangeBeamCol(geom.Value[0], optimalCol.Result.OptimalCol());
+                    newCols[geom.Value[0].Id] = optimalCol.Result.OptimalCol();
                 }
                 else
                 {
                     var cols = optimalCol.Result.OptimalCols(geom.Value.Count);
                     for (int i = 0; i < geom.Value.Count; i++)
-                        ChangeBeamCol(geom.Value[i], cols[i]);
+                        newCols[geom.Value[i].Id] = cols[i];
                 }
-                
+
                 n += 1;
             }
-        
+
+            // ChangeBeamCol re-adds each beam at the end of the plan, so apply
+            // the angles in the plan's current order to keep the delivery order.
+            foreach (var b in newPlan.Beams.ToList())
+            {
+                if (newCols.TryGetValue(b.Id, out int col))
+                    ChangeBeamCol(b, col);
+            }
+
         }
 
         public VVector CentreOfMass(List<Structure> selectedTargets)
