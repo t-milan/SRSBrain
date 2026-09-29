@@ -244,28 +244,32 @@ namespace Plugin
             }
             else if (SelectedTabIndex == 1) // 45° ROtations
             {
+                // Couch angles are IEC; the T-numbers in the checkbox names are the Varian scale shown to the RTs.
+                var slots = new List<List<HalfArc>>();
                 if (IsSelected45DegT0L)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 0, "01_T0"));
+                    slots.Add(new List<HalfArc> { new HalfArc(0, ArcSide.Via90) });
                 if (IsSelected45DegT0R)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 180.1, GantryDirection.CounterClockwise, 0, "02_T0"));
+                    slots.Add(new List<HalfArc> { new HalfArc(0, ArcSide.Via270) });
                 if (IsSelected45DegT315)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 180.1, 0, GantryDirection.Clockwise, 45, "03_T315"));
+                    slots.Add(new List<HalfArc> { new HalfArc(45, ArcSide.Via270) });
                 if (IsSelected45DegT45)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 179.9, GantryDirection.Clockwise, 315, "04_T45"));
-                if (IsSelected45DegT90)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 270, "05_T90"));
-
+                    slots.Add(new List<HalfArc> { new HalfArc(315, ArcSide.Via90) });
+                if (IsSelected45DegT90) // vertex field: T90 and T270 give the same beams, so let the sequencer pick
+                    slots.Add(new List<HalfArc> { new HalfArc(270, ArcSide.Via90), new HalfArc(90, ArcSide.Via270) });
+                fieldGeometry = FieldSequencer.Sequence(slots);
             }
             else if (SelectedTabIndex == 2) // 60° Rotations
             {
+                var slots = new List<List<HalfArc>>();
                 if (IsSelected60DegT0L)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 179.9, 0, GantryDirection.CounterClockwise, 0, "01_T0"));
+                    slots.Add(new List<HalfArc> { new HalfArc(0, ArcSide.Via90) });
                 if (IsSelected60DegT0R)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 180.1, GantryDirection.CounterClockwise, 0, "02_T0"));
+                    slots.Add(new List<HalfArc> { new HalfArc(0, ArcSide.Via270) });
                 if (IsSelected60DegT300)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 180.1, 0, GantryDirection.Clockwise, 60, "03_T300"));
+                    slots.Add(new List<HalfArc> { new HalfArc(60, ArcSide.Via270) });
                 if (IsSelected60DegT60)
-                    fieldGeometry.Add(new SimpleBeam(ArcLen.Half, 0, 179.9, GantryDirection.Clockwise, 300, "04_T60"));
+                    slots.Add(new List<HalfArc> { new HalfArc(300, ArcSide.Via90) });
+                fieldGeometry = FieldSequencer.Sequence(slots);
             }
 
 
